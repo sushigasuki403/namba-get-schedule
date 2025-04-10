@@ -1,87 +1,75 @@
 import os
-import re
-import io
-import datetime
+import base64
 import requests
-from bs4 import BeautifulSoup
-from PIL import Image
-import easyocr
-
+import datetime
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from bs4 import BeautifulSoup
 
-# -----------------------------
-# STEP 1: 画像URLを取得して保存
-# -----------------------------
 INFO_URL = "https://cs-plaza.co.jp/naniwa-sc/information/3106"
+GEMINI_API_KEY = os.environ.get("AIzaSyCcC6pJnCCPMYmOgTiKV02wH8_zLokQfm8")
 
-def download_images_from_target_article():
-    # ページ取得
+def download_image():
     response = requests.get(INFO_URL)
     soup = BeautifulSoup(response.content, "html.parser")
-
-    # 特定の`<article>`タグを取得
-    target_article = soup.find("article", class_="entry-body")  # 最初の`entry-body`だけ取得
+    target_article = soup.find("article", class_="entry-body")
     if not target_article:
-        print("❌ 指定された記事が見つかりません。")
+        print("❌ 記事が見つかりませんでした")
+        return None
+
+    img_tag = target_article.find("img")
+    if not img_tag or not img_tag.get("src"):
+        print("❌ 画像が見つかりませんでした")
+        return None
+
+    img_url = requests.compat.urljoin(INFO_URL, img_tag.get("src"))
+    img_data = requests.get(img_url).content
+    with open("calendar_image.png", "wb") as f:
+        f.write(img_data)
+
+    return "calendar_image.png"
+
+def extract_events_with_gemini(image_path):
+    with open(image_path, "rb") as img_file:
+        image_data = base64.b64encode(img_file.read()).decode("utf-8")
+
+    prompt = (
+        "この画像には営業日程が書かれています。"
+        "画像から、月・日にち・営業している時間帯（例：10:00～19:00）を各日にちごとに抽出してください。"
+        "結果は以下のようにJSON形式で返してください："
+        "[{\"date\": \"2025-04-10\", \"start\": \"10:00\", \"end\": \"19:00\"}, ...]"
+    )
+
+    body = {
+        "contents": [
+            {"parts": [{"text": prompt}]},
+            {"parts": [{"inlineData": {
+                "mimeType": "image/png",
+                "data": image_data
+            }}]}
+        ]
+    }
+
+    headers = {"Content-Type": "application/json"}
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-pro-vision:generateContent?key={GEMINI_API_KEY}"
+
+    res = requests.post(url, headers=headers, json=body)
+    res.raise_for_status()
+
+    text = res.json()["candidates"][0]["content"]["parts"][0]["text"]
+
+    # JSON抽出
+    import json
+    try:
+        start_idx = text.find("[")
+        end_idx = text.rfind("]") + 1
+        events_json = text[start_idx:end_idx]
+        return json.loads(events_json)
+    except Exception as e:
+        print("❌ JSONパースに失敗:", e)
+        print("レスポンス:", text)
         return []
 
-    # 画像を収集
-    downloaded_images = []
-    for img in target_article.find_all("img"):  # `article`内のすべての画像
-        src = img.get("src")
-        if src:  # `src`属性が存在する場合のみ処理
-            img_url = requests.compat.urljoin(INFO_URL, src)  # 相対パスを絶対URLに変換
-            img_data = requests.get(img_url).content
-            filename = src.split("/")[-1]  # ファイル名を抽出
-            with open(filename, "wb") as f:
-                f.write(img_data)
-            downloaded_images.append(filename)
-            print(f"✅ ダウンロード完了: {img_url}")
-
-    if not downloaded_images:
-        print("❌ 画像が見つかりませんでした。")
-    return downloaded_images
-
-
-# -----------------------------
-# STEP 2: OCRで画像から予定を抽出
-# -----------------------------
-def extract_events_from_image(image_path):
-    reader = easyocr.Reader(['ja'], gpu=False)
-    result = reader.readtext(image_path, detail=0)
-
-    # 文字列を1つの大きなテキストにまとめる
-    full_text = ' '.join(result)
-    print("🧾 フルOCR文字列:", full_text)
-
-    # 日付と時間パターンを改めて抽出（柔軟に対応）
-    pattern = r'(\d{1,2})\D*(10[:：]00)\D*[~～−\-ー]\D*(19[:：]00)'
-    matches = re.findall(pattern, full_text)
-
-    events = []
-    current_year = datetime.datetime.now().year
-    current_month = 4  # 画像から固定でもOK
-
-    for match in matches:
-        day = int(match[0])
-        start_time = match[1].replace('：', ':')
-        end_time = match[2].replace('：', ':')
-        date = datetime.datetime(current_year, current_month, day)
-
-        events.append({
-            'summary': f'なんばスケートリンク 一般営業',
-            'start': date.strftime(f'%Y-%m-%dT{start_time}:00'),
-            'end': date.strftime(f'%Y-%m-%dT{end_time}:00'),
-        })
-
-    print(f"✅ 抽出されたイベント数: {len(events)}")
-    return events
-
-
-# -----------------------------
-# STEP 3: Googleカレンダーへ登録
-# -----------------------------
 def register_to_google_calendar(events):
     credentials = service_account.Credentials.from_service_account_file(
         "credentials.json",
@@ -89,36 +77,34 @@ def register_to_google_calendar(events):
     )
 
     service = build("calendar", "v3", credentials=credentials)
-    calendar_id = "rikushiomi.kfsc@gmail.com"  # or your specific calendar ID
+    calendar_id = "rikushiomi.kfsc@gmail.com"
 
     for event in events:
-        # 修正：時間を`summary`に含める
+        start_datetime = f"{event['date']}T{event['start']}:00"
+        end_datetime = f"{event['date']}T{event['end']}:00"
+
         event_body = {
-            'summary': f"{event['summary']} ({event['start'][-8:]}～{event['end'][-8:]})",  # 時間をsummaryに追加
-            # 開始・終了時間を登録しない
-            'start': {'date': event['start'][:10], 'timeZone': 'Asia/Tokyo'},  # 日付のみ
-            'end': {'date': event['end'][:10], 'timeZone': 'Asia/Tokyo'}      # 日付のみ
+            'summary': f"一般営業 ({event['start']}～{event['end']})",
+            'start': {'dateTime': start_datetime, 'timeZone': 'Asia/Tokyo'},
+            'end': {'dateTime': end_datetime, 'timeZone': 'Asia/Tokyo'}
         }
+
         service.events().insert(calendarId=calendar_id, body=event_body).execute()
 
     print("✅ Googleカレンダーへの登録完了")
 
-
-# -----------------------------
-# Main 実行
-# -----------------------------
 def main():
-    image_paths = download_images_from_target_article()
-    print(f"📎 image_path[0] = {image_paths[0]}")
-    print(f"📎 type = {type(image_paths[0])}")
-
-    if not image_paths:
-        print("❌ 画像が見つからなかったため、処理を終了します。")
+    image_path = download_image()
+    if not image_path:
         return
-# 最初の画像を使用する場合
-    events = extract_events_from_image(image_paths[0])
-    register_to_google_calendar(events)
 
+    events = extract_events_with_gemini(image_path)
+    if not events:
+        print("❌ イベント情報が抽出できませんでした")
+        return
+
+    register_to_google_calendar(events)
 
 if __name__ == "__main__":
     main()
+
