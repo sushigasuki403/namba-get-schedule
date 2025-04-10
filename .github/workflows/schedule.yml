@@ -21,13 +21,14 @@ jobs:
         run: |
           pip install -r requirements.txt
 
+      - name: Save Google credentials
+        run: |
+          mkdir -p creds
+          echo "${{ secrets.GOOGLE_CREDENTIALS }}" > creds/service_account.json
+
       - name: Run script
         env:
           GOOGLE_APPLICATION_CREDENTIALS: creds/service_account.json
         run: |
           python main.py
-
-      - name: Save Google credentials
-        run: |
-          echo "${{ secrets.GOOGLE_CREDENTIALS }}" > creds.json
 
