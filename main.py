@@ -115,6 +115,9 @@ def register_to_google_calendar(events):
 # -----------------------------
 def main():
     image_paths = download_images_from_target_article()
+    print(f"📎 image_path[0] = {image_paths[0]}")
+    print(f"📎 type = {type(image_paths[0])}")
+
     if not image_paths:
         print("❌ 画像が見つからなかったため、処理を終了します。")
         return
