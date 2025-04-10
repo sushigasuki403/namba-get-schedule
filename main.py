@@ -102,8 +102,12 @@ def register_to_google_calendar(events):
 # Main 実行
 # -----------------------------
 def main():
-    image_path = download_images_from_target_article()
-    events = extract_events_from_image(image_path)
+    image_paths = download_images_from_target_article()
+    if not image_paths:
+        print("❌ 画像が見つからなかったため、処理を終了します。")
+        return
+# 最初の画像を使用する場合
+    events = extract_events_from_image(image_paths[0])
     register_to_google_calendar(events)
 
 
