@@ -53,18 +53,30 @@ def extract_events_from_image(image_path):
 
     events = []
     current_year = datetime.datetime.now().year
-    current_month = 4  # 固定（もしくは画像内から取得してもOK）
+    current_month = None
 
+    # 月をOCR結果から取得（例: "4月"）
     for line in result:
-        m = re.match(r"(\d{1,2})[日]?\s*一般営業.*?(\d{2}:\d{2})～(\d{2}:\d{2})", line)
+        m = re.search(r'(\d{1,2})月', line)
+        if m:
+            current_month = int(m.group(1))
+            break
+    if not current_month:
+        print("❌ 月情報が見つかりませんでした。デフォルトで4月に設定します。")
+        current_month = 4
+
+    # 日付・時間を抽出
+    for line in result:
+        # 正規表現を柔軟に対応させる
+        m = re.match(r"(\d{1,2})[日]?\s*一般営業.*?(\d{1,2})[:：](\d{2})[～~−\-ー](\d{1,2})[:：](\d{2})", line)
         if m:
             day = int(m.group(1))
-            start_time = m.group(2)
-            end_time = m.group(3)
+            start_time = f"{int(m.group(2)):02}:{m.group(3)}"
+            end_time = f"{int(m.group(4)):02}:{m.group(5)}"
             date = datetime.datetime(current_year, current_month, day)
 
             events.append({
-                'summary': 'なんばスケートリンク 一般営業',
+                'summary': f'なんばスケートリンク 一般営業',
                 'start': date.strftime(f'%Y-%m-%dT{start_time}:00'),
                 'end': date.strftime(f'%Y-%m-%dT{end_time}:00'),
             })
