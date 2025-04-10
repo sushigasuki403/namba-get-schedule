@@ -13,6 +13,8 @@ from googleapiclient.discovery import build
 # -----------------------------
 # STEP 1: 画像URLを取得して保存
 # -----------------------------
+INFO_URL = "https://cs-plaza.co.jp/naniwa-sc/information/3106"
+
 def download_images_from_target_article():
     # ページ取得
     response = requests.get(INFO_URL)
@@ -100,7 +102,7 @@ def register_to_google_calendar(events):
 # Main 実行
 # -----------------------------
 def main():
-    image_path = download_schedule_image()
+    image_path = download_images_from_target_article()
     events = extract_events_from_image(image_path)
     register_to_google_calendar(events)
 
