@@ -7,7 +7,7 @@ from googleapiclient.discovery import build
 from bs4 import BeautifulSoup
 
 INFO_URL = "https://cs-plaza.co.jp/naniwa-sc/information/3106"
-GEMINI_API_KEY = os.environ.get("AIzaSyCcC6pJnCCPMYmOgTiKV02wH8_zLokQfm8")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 def download_image():
     response = requests.get(INFO_URL)
