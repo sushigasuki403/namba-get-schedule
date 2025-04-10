@@ -1,8 +1,9 @@
-requests
-beautifulsoup4
-pytesseract
-Pillow
+easyocr
 google-api-python-client
 google-auth
 google-auth-httplib2
 google-auth-oauthlib
+beautifulsoup4
+requests
+pillow
+
