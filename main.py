@@ -52,7 +52,7 @@ def extract_events_from_image(image_path):
     result = reader.readtext(image_path, detail=0)
 
     for line in result:
-    print(f"OCR → {line}")
+        print(f"OCR → {line}")
 
     events = []
     current_year = datetime.datetime.now().year
