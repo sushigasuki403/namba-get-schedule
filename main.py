@@ -51,6 +51,9 @@ def extract_events_from_image(image_path):
     reader = easyocr.Reader(['ja'], gpu=False)
     result = reader.readtext(image_path, detail=0)
 
+    for line in result:
+    print(f"OCR → {line}")
+
     events = []
     current_year = datetime.datetime.now().year
     current_month = None
