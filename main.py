@@ -14,7 +14,7 @@ from googleapiclient.discovery import build
 # STEP 1: 画像URLを取得して保存
 # -----------------------------
 def download_schedule_image():
-    INFO_URL = "https://www.namba-ice.com/info/"
+    INFO_URL = "https://cs-plaza.co.jp/naniwa-sc/information/3106"
     IMAGE_FILENAME = "schedule.png"
 
     res = requests.get(INFO_URL)
@@ -72,7 +72,7 @@ def register_to_google_calendar(events):
     )
 
     service = build("calendar", "v3", credentials=credentials)
-    calendar_id = "primary"  # or your specific calendar ID
+    calendar_id = "rikushiomi.kfsc@gmail.com"  # or your specific calendar ID
 
     for event in events:
         # 修正：時間を`summary`に含める
