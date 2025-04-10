@@ -26,3 +26,8 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: creds/service_account.json
         run: |
           python main.py
+
+      - name: Save Google credentials
+        run: |
+          echo "${{ secrets.GOOGLE_CREDENTIALS }}" > creds.json
+
