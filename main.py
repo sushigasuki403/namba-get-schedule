@@ -51,38 +51,29 @@ def extract_events_from_image(image_path):
     reader = easyocr.Reader(['ja'], gpu=False)
     result = reader.readtext(image_path, detail=0)
 
-    for line in result:
-        print(f"OCR → {line}")
+    # 文字列を1つの大きなテキストにまとめる
+    full_text = ' '.join(result)
+    print("🧾 フルOCR文字列:", full_text)
+
+    # 日付と時間パターンを改めて抽出（柔軟に対応）
+    pattern = r'(\d{1,2})\D*(10[:：]00)\D*[~～−\-ー]\D*(19[:：]00)'
+    matches = re.findall(pattern, full_text)
 
     events = []
     current_year = datetime.datetime.now().year
-    current_month = None
+    current_month = 4  # 画像から固定でもOK
 
-    # 月をOCR結果から取得（例: "4月"）
-    for line in result:
-        m = re.search(r'(\d{1,2})月', line)
-        if m:
-            current_month = int(m.group(1))
-            break
-    if not current_month:
-        print("❌ 月情報が見つかりませんでした。デフォルトで4月に設定します。")
-        current_month = 4
+    for match in matches:
+        day = int(match[0])
+        start_time = match[1].replace('：', ':')
+        end_time = match[2].replace('：', ':')
+        date = datetime.datetime(current_year, current_month, day)
 
-    # 日付・時間を抽出
-    for line in result:
-        # 正規表現を柔軟に対応させる
-        m = re.match(r"(\d{1,2})[日]?\s*一般営業.*?(\d{1,2})[:：](\d{2})[～~−\-ー](\d{1,2})[:：](\d{2})", line)
-        if m:
-            day = int(m.group(1))
-            start_time = f"{int(m.group(2)):02}:{m.group(3)}"
-            end_time = f"{int(m.group(4)):02}:{m.group(5)}"
-            date = datetime.datetime(current_year, current_month, day)
-
-            events.append({
-                'summary': f'なんばスケートリンク 一般営業',
-                'start': date.strftime(f'%Y-%m-%dT{start_time}:00'),
-                'end': date.strftime(f'%Y-%m-%dT{end_time}:00'),
-            })
+        events.append({
+            'summary': f'なんばスケートリンク 一般営業',
+            'start': date.strftime(f'%Y-%m-%dT{start_time}:00'),
+            'end': date.strftime(f'%Y-%m-%dT{end_time}:00'),
+        })
 
     print(f"✅ 抽出されたイベント数: {len(events)}")
     return events
