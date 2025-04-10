@@ -53,7 +53,7 @@ def extract_events_with_gemini(image_path):
     }
 
     headers = {"Content-Type": "application/json"}
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flasht:generateContent?key={GEMINI_API_KEY}"
 
     res = requests.post(url, headers=headers, json=body)
     res.raise_for_status()
