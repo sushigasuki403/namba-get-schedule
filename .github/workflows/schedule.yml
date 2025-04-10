@@ -2,14 +2,15 @@ name: Weekly Calendar Updater
 
 on:
   schedule:
-    - cron: '0 0 * * 1'  # 毎週月曜日の00:00（UTC）
-  workflow_dispatch:     # 手動実行も可能
+    - cron: '0 0 * * 1'  # 毎週月曜日00:00（UTC）
+  workflow_dispatch:     # 手動実行もOK
 
 jobs:
   update-calendar:
     runs-on: ubuntu-latest
     env:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GOOGLE_CREDENTIALS_BASE64: ${{ secrets.GOOGLE_CREDENTIALS_BASE64 }}
 
     steps:
       - name: Checkout repository
@@ -22,13 +23,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+      - name: Decode credentials.json from secret
+        run: |
+          echo $GOOGLE_CREDENTIALS_BASE64 | base64 -d > credentials.json
 
       - name: Run script
         run: python main.py
 
-      - name: Debug Output
-        if: failure()
-        run: echo "❌ スクリプト実行に失敗しました"
 
