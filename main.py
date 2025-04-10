@@ -13,24 +13,33 @@ from googleapiclient.discovery import build
 # -----------------------------
 # STEP 1: 画像URLを取得して保存
 # -----------------------------
-def download_schedule_image():
-    INFO_URL = "https://cs-plaza.co.jp/naniwa-sc/information/3106"
-    IMAGE_FILENAME = "schedule.png"
+def download_images_from_target_article():
+    # ページ取得
+    response = requests.get(INFO_URL)
+    soup = BeautifulSoup(response.content, "html.parser")
 
-    res = requests.get(INFO_URL)
-    soup = BeautifulSoup(res.content, "html.parser")
+    # 特定の`<article>`タグを取得
+    target_article = soup.find("article", class_="entry-body")  # 最初の`entry-body`だけ取得
+    if not target_article:
+        print("❌ 指定された記事が見つかりません。")
+        return []
 
-    for img in soup.find_all("img"):
+    # 画像を収集
+    downloaded_images = []
+    for img in target_article.find_all("img"):  # `article`内のすべての画像
         src = img.get("src")
-        if src and re.search(r"予定表|schedule", src):
-            img_url = requests.compat.urljoin(INFO_URL, src)
+        if src:  # `src`属性が存在する場合のみ処理
+            img_url = requests.compat.urljoin(INFO_URL, src)  # 相対パスを絶対URLに変換
             img_data = requests.get(img_url).content
-            with open(IMAGE_FILENAME, "wb") as f:
+            filename = src.split("/")[-1]  # ファイル名を抽出
+            with open(filename, "wb") as f:
                 f.write(img_data)
+            downloaded_images.append(filename)
             print(f"✅ ダウンロード完了: {img_url}")
-            return IMAGE_FILENAME
 
-    raise Exception("❌ スケジュール画像が見つかりませんでした。")
+    if not downloaded_images:
+        print("❌ 画像が見つかりませんでした。")
+    return downloaded_images
 
 
 # -----------------------------
