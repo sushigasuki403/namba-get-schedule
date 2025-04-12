@@ -80,18 +80,20 @@ def register_to_google_calendar(events):
     calendar_id = "rikushiomi.kfsc@gmail.com"
 
     for event in events:
-        start_datetime = f"{event['date']}T{event['start']}:00"
-        end_datetime = f"{event['date']}T{event['end']}:00"
-
         event_body = {
-            'summary': f"なんばスケートリンク 一般営業 ({event['start']}～{event['end']})",
-            'start': {'dateTime': start_datetime, 'timeZone': 'Asia/Tokyo'},
-            'end': {'dateTime': end_datetime, 'timeZone': 'Asia/Tokyo'}
+            'summary': f"{event['start']}～{event['end']}",
+            'start': {'date': event['date'], 'timeZone': 'Asia/Tokyo'},
+            'end': {'date': get_next_day(event['date']), 'timeZone': 'Asia/Tokyo'}
         }
 
         service.events().insert(calendarId=calendar_id, body=event_body).execute()
 
     print("✅ Googleカレンダーへの登録完了")
+
+def get_next_day(date_str):
+    date_obj = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+    next_day = date_obj + datetime.timedelta(days=1)
+    return next_day.isoformat()
 
 def main():
     image_path = download_image()
