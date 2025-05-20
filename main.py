@@ -18,7 +18,13 @@ def download_image():
         print("❌ 記事が見つかりませんでした")
         return None
 
-    img_tag = target_article.find("img")
+    img_tags = target_article.find_all("img")
+    if len(img_tags) < 2:
+        print("❗ 画像が1枚しか見つかりません。1枚目を使用します。")
+        img_tag = img_tags[0] if img_tags else None
+    else:
+        img_tag = img_tags[1]  # 2枚目を優先
+
     if not img_tag or not img_tag.get("src"):
         print("❌ 画像が見つかりませんでした")
         return None
@@ -80,15 +86,31 @@ def register_to_google_calendar(events):
     calendar_id = "rikushiomi.kfsc@gmail.com"
 
     for event in events:
+        event_summary = f"{event['start']}～{event['end']}"
+        event_date = event['date']
+
+        # 重複チェック（当日のイベントを取得）
+        existing_events = service.events().list(
+            calendarId=calendar_id,
+            timeMin=event_date + "T00:00:00+09:00",
+            timeMax=event_date + "T23:59:59+09:00",
+            singleEvents=True
+        ).execute().get("items", [])
+
+        if any(ev.get('summary') == event_summary for ev in existing_events):
+            print(f"⚠️ イベント（{event_summary}）はすでに存在します。スキップ。")
+            continue
+
         event_body = {
-            'summary': f"{event['start']}～{event['end']}",
-            'start': {'date': event['date'], 'timeZone': 'Asia/Tokyo'},
-            'end': {'date': get_next_day(event['date']), 'timeZone': 'Asia/Tokyo'}
+            'summary': event_summary,
+            'start': {'date': event_date, 'timeZone': 'Asia/Tokyo'},
+            'end': {'date': get_next_day(event_date), 'timeZone': 'Asia/Tokyo'}
         }
 
         service.events().insert(calendarId=calendar_id, body=event_body).execute()
+        print(f"✅ イベント登録：{event_date} {event_summary}")
 
-    print("✅ Googleカレンダーへの登録完了")
+    print("✅ Googleカレンダーへの登録処理が完了しました")
 
 def get_next_day(date_str):
     date_obj = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
