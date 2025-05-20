@@ -2,8 +2,9 @@ name: Weekly Calendar Updater
 
 on:
   schedule:
-    - cron: '0 0 1 * *'  # 毎月1日 00:00 UTC
-  workflow_dispatch:     # 手動実行も可能
+    - cron: '0 0 * * 2'  # 火曜日 (UTC)
+    - cron: '0 0 * * 5'  # 金曜日 (UTC)
+  workflow_dispatch:
 
 jobs:
   update-calendar:
